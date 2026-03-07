@@ -131,6 +131,7 @@ auditrs config filter <COMMAND> \
   [remove <VALUE>] \
   [import <FILE>] \
   [update <VALUE> <ACTION> {block | allow}]
+  [dump <FILE>]
 ```
 
 - **get [VALUE]**: Show current filters, optionally for a single value.
@@ -138,3 +139,4 @@ auditrs config filter <COMMAND> \
 - **remove \<VALUE\>**: Remove a filter rule.
 - **import \<FILE\>**: Import filter rules from a file.
 - **update \<VALUE\> \<ACTION\>**: Update an existing rule.
+- **update \<FILE\>**: Dump the current filters to a file.
