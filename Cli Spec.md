@@ -14,10 +14,11 @@
 - dump
 - search
 - report
+- filter
+- watch
 
-#### Other
+#### Configuration
 
-- help
 - config
 
 ---
@@ -25,6 +26,8 @@
 ## Query
 
 Commands for interacting with `auditrs` event logs.
+
+> These are not yet fully implemented, the flags for these commands are likely to be replaced with an interactive command line question set.
 
 ### dump
 
@@ -93,50 +96,131 @@ auditrs report \
 
 ## Config
 
-Commands for manipulating `auditrs` configuration.
+Commands for manipulating `auditrs` configuration. These settings control where each tier of the logging pipeline stores data and how much space each tier is allowed to consume, as described in the three-tiered write path (`Active Audit Stream`, `Audit Journal`, and `Primary Audit Log`).
 
 ```bash
-auditrs config <COMMAND> { get | set | filter }
+auditrs config <COMMAND> { get | set }
 ```
 
 ### Get
 
 ```bash
-auditrs config get [COMMAND] { directory | size | format }
+auditrs config get <COMMAND> \
+  { format \
+  | active-directory | journal-directory | primary-directory \
+  | active-size | journal-size | primary-size }
 ```
 
-- **directory**: Get the current log directory.
-- **size**: Get the current log size limit.
-- **format**: Get the current output format
+- **format**: Get the current output format for primary audit log records.
+- **active-directory**: Get the current storage directory for the Active Audit Stream.
+- **journal-directory**: Get the current storage directory for the Audit Journal (medium-term, full-fidelity storage).
+- **primary-directory**: Get the current storage directory for the Primary Audit Log (user-facing, canonical log).
+- **active-size**: Get the current size limit for the Active Audit Stream.
+- **journal-size**: Get the current size limit for the Audit Journal.
+- **primary-size**: Get the current size limit for the Primary Audit Log.
 
 ### Set
 
 ```bash
 auditrs config set <COMMAND> \
-  [directory <VALUE>] \
-  [size <VALUE>] \
-  [format <VALUE> {legacy | simple | json}]
+  { format \
+  | active-directory <VALUE> \
+  | journal-directory <VALUE> \
+  | primary-directory <VALUE> \
+  | active-size \
+  | journal-size \
+  | primary-size }
 ```
 
-- **directory \<VALUE\>**: Set the log directory.
-- **size \<VALUE\>**: Set the log size limit.
-- **format \<VALUE\>**: Set the output format.
+- **format**: Set the output format for the Primary Audit Log (interactive).
+- **active-directory \<VALUE\>**: Set the storage directory for the Active Audit Stream.
+- **journal-directory \<VALUE\>**: Set the storage directory for the Audit Journal.
+- **primary-directory \<VALUE\>**: Set the storage directory for the Primary Audit Log.
+- **active-size**: Set the size limit for the Active Audit Stream (interactive).
+- **journal-size**: Set the size limit for the Audit Journal (interactive).
+- **primary-size**: Set the size limit for the Primary Audit Log (interactive).
 
-### Filter
+---
+
+## Filter
+
+Commands for managing `auditrs` log filters. Filters are defined over record types and fields described in the reference documentation:
+`https://github.com/Rowdy-Rustiles/docs/blob/main/Reference/Record%20Types.md`.
 
 ```bash
-auditrs config filter <COMMAND> \
-  [get [VALUE]] \
-  [add]  \
-  [remove <VALUE>] \
-  [import <FILE>] \
-  [update <VALUE> <ACTION> {block | allow}]
-  [dump <FILE>]
+auditrs filter <COMMAND>
 ```
 
-- **get [VALUE]**: Show current filters, optionally for a single value.
-- **add \<VALUE\> \<ACTION\>**: Add a filter rule.
-- **remove \<VALUE\>**: Remove a filter rule.
-- **import \<FILE\>**: Import filter rules from a file.
-- **update \<VALUE\> \<ACTION\>**: Update an existing rule.
-- **update \<FILE\>**: Dump the current filters to a file.
+### get
+
+```bash
+auditrs filter get [VALUE]
+```
+
+- **VALUE** (optional): If provided, show only filters matching this value; otherwise, list all filters.
+
+### add
+
+```bash
+auditrs filter add
+```
+
+- Starts an interactive sequence of prompts to define a new filter rule. The CLI will guide the user through choosing a record type, selecting fields and match conditions (including activity- and path-based predicates), and specifying whether matching events should be included in or excluded from the primary audit log.
+
+### remove
+
+```bash
+auditrs filter remove [VALUE]
+```
+
+- **VALUE** (optional): Record type or filter value to remove. If omitted, `auditrs` will interactively present existing filters to remove.
+
+### import
+
+```bash
+auditrs filter import <FILE>
+```
+
+- **FILE**: File to import filters from (`.ars`, `.toml`, `.rules`).
+
+### dump
+
+```bash
+auditrs filter dump <FILE>
+```
+
+- **FILE**: File to dump filters to (omit file extension; the appropriate extension will be added automatically).
+
+---
+
+## Watch
+
+Path- and directory-based watches are a higher-level interface built on top of the same underlying policy engine as filters. They provide an auditd-like way to say “always log certain activities on this file or directory.” Watches do not change the underlying storage configuration; they only influence which events are selected into the primary audit log.
+
+```bash
+auditrs watch <COMMAND>
+```
+
+### list
+
+```bash
+auditrs watch list
+```
+
+- Show all configured watches.
+
+### add
+
+```bash
+auditrs watch add
+```
+
+- Starts an interactive sequence of prompts to define a new watch. The CLI will ask for the file or directory path, the activities to watch (e.g. `exec`, `chmod`, `chown`), whether the watch should apply recursively, and an optional human-readable key. Matching events are always written to the primary audit log.
+
+### remove
+
+```bash
+auditrs watch remove <KEY>
+```
+
+- **KEY**: Remove the watch associated with the given key.
